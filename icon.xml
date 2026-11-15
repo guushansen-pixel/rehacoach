@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher-Icon fuer den Reha-Coach: ein angewinkelter Arm (Ober- und
+     Unterarm als zwei Balken mit Gelenkpunkt), darunter ein Haken fuer
+     "erledigt". 108x108, Motiv innerhalb von Radius 31 um die Mitte (54,54),
+     damit die runde Launcher-Maske nichts abschneidet. Hintergrundfarbe
+     kommt per -IconBackground. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Oberarm -->
+    <path android:fillColor="#E8EDF2"
+        android:pathData="M30,34 l8,-5 l20,30 l-8,5 z" />
+    <!-- Unterarm -->
+    <path android:fillColor="#E8EDF2"
+        android:pathData="M52,55 l28,-12 l4,9 l-28,12 z" />
+    <!-- Ellbogen -->
+    <path android:fillColor="#F08A5D"
+        android:pathData="M46,61 a8,8 0 1 0 16,0 a8,8 0 1 0 -16,0 z" />
+    <!-- Haken -->
+    <path android:fillColor="#3FB6A8"
+        android:pathData="M34,74 l5,5 l10,-11 l4,3 l-14,15 l-9,-8 z" />
+</vector>

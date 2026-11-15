@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Reha-Coach</title>
+<style>
+:root {
+  --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px);
+  --bg: #12171E; --card: #1B222C; --line: #2A3441; --txt: #E8EDF2; --muted: #93A0AF;
+  --acc: #3FB6A8; --good: #4CC38A; --bad: #E5674F; --warn: #E0A93B;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--txt);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+#app { max-width: 560px; margin: 0 auto; padding: calc(var(--sat) + 8px) 14px calc(var(--sab) + 28px); }
+header { display: flex; align-items: center; gap: 8px; height: 48px; }
+header h1 { font-size: 20px; margin: 0; flex: 1; }
+#back { background: none; border: 0; color: var(--txt); font-size: 30px; line-height: 1; padding: 0 12px 4px 0; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 10px 0; }
+.card h2 { font-size: 13px; margin: 0 0 8px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.card.warn { border-color: var(--warn); } .card.stop { border-color: var(--bad); } .card.up { border-color: var(--good); }
+.muted { color: var(--muted); } .small { font-size: 13px; } .good { color: var(--good); } .bad { color: var(--bad); }
+.big { font-size: 28px; font-weight: 700; }
+button, .chip { font: inherit; color: var(--txt); background: #26303D; border: 1px solid var(--line); border-radius: 11px; padding: 10px 12px; }
+button.primary { background: var(--acc); border-color: var(--acc); color: #06201D; font-weight: 700; }
+button.block { display: block; width: 100%; margin-top: 8px; }
+button.ghost { background: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip.on { background: var(--acc); border-color: var(--acc); color: #06201D; font-weight: 600; }
+.chip.num { min-width: 44px; text-align: center; padding: 10px 0; flex: 1 0 44px; }
+.row { display: flex; gap: 8px; align-items: center; } .row > .grow { flex: 1; min-width: 0; }
+.item { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); }
+.item:first-of-type { border-top: 0; } .item > div.grow { flex: 1; min-width: 0; } .item b { white-space: nowrap; }
+label.f { display: block; margin: 10px 0 4px; font-size: 13px; color: var(--muted); }
+label.c { display: flex; align-items: center; gap: 10px; margin-top: 9px; }
+input[type=text], input[type=number], textarea { font: inherit; color: var(--txt); background: #0E1319; border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; width: 100%; }
+textarea { min-height: 60px; }
+canvas.chart { width: 100%; height: 150px; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); margin-top: 4px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+ul { margin: 6px 0; padding-left: 20px; } li { margin: 4px 0; }
+textarea.mono { height: 110px; font: 12px/1.4 monospace; }
+
+/* Uebungs-Ansicht: Vollbild */
+#run { position: fixed; inset: 0; z-index: 10; background: var(--bg); display: flex; flex-direction: column;
+  padding: calc(var(--sat) + 8px) 16px calc(var(--sab) + 16px); touch-action: manipulation; }
+#run[hidden], #modal[hidden] { display: none; }
+#r-top { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+#r-title { flex: 1; font-size: 19px; font-weight: 700; }
+#r-quit { font-size: 13px; padding: 7px 12px; }
+#r-body { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+.center { text-align: center; }
+#r-num { font-size: 120px; font-weight: 700; line-height: 1; text-align: center; font-variant-numeric: tabular-nums; }
+#r-label { font-size: 24px; font-weight: 700; text-align: center; min-height: 36px; }
+#r-label.hold, #r-label.down { color: var(--acc); } #r-label.up { color: var(--warn); } #r-label.rest { color: var(--muted); }
+.bar { height: 10px; background: #0E1319; border-radius: 5px; overflow: hidden; margin: 18px 0; }
+.bar i { display: block; height: 100%; width: 0; background: var(--acc); }
+#modal { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.6); display: flex; align-items: flex-end; justify-content: center; }
+#modal > div { background: var(--card); width: 100%; max-width: 560px; max-height: 92%; overflow-y: auto; border-radius: 16px 16px 0 0; padding: 16px 16px calc(var(--sab) + 16px); }
+#modal h3 { margin: 0 0 6px; }
+.btns { display: flex; gap: 8px; margin-top: 12px; } .btns button { flex: 1; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header><button id="back" aria-label="Zurück">‹</button><h1 id="title">Reha-Coach</h1></header>
+  <main id="view"></main>
+</div>
+<div id="run" hidden>
+  <div id="r-top"><span id="r-title"></span><button id="r-quit">Abbrechen</button></div>
+  <div id="r-step" class="muted small"></div>
+  <div id="r-body"></div>
+</div>
+<div id="modal" hidden><div id="modal-in"></div></div>
+
+<script>
+'use strict';
+// =====================================================================
+// Reha-Coach: gefuehrte Kraeftigungs-Einheiten fuer den Ellbogen zu Hause
+// (Halteuebungen, langsames Ablassen, Wiederholungen) mit Schmerzprotokoll.
+// Die App fuehrt durch den Plan, den Daniel selbst eintraegt; sie ersetzt
+// keine Diagnose und keine Physiotherapie. Details in README.md.
+// Aufbau: Daten -> reine Funktionen (Ablauf, Hinweis, Text) -> Ablauf
+//         -> Ansichten -> Backup -> Selbsttest (rcTests, ?debug=1).
+// =====================================================================
+const $ = id => document.getElementById(id);
+const NATIVE = window.RcAndroid;
+
+// ---------------------------------------------------------------- Daten
+const K = { set: 'rehacoach.settings.v1', ex: 'rehacoach.exercises.v1', ses: 'rehacoach.sessions.v1' };
+// Uebliche Uebungen bei Tennisarm als Startvorschlag. Greifen nur beim ersten Start.
+const SEED = [
+  { id: 'e1', name: 'Handgelenk strecken, halten', typ: 'iso', sets: 5, hold: 45, rest: 60, last: '', note: 'Unterarm auf dem Tisch, Handrücken oben, Hand über der Kante. Gewicht halten, ohne dass sich die Hand bewegt.' },
+  { id: 'e2', name: 'Handgelenk langsam ablassen', typ: 'exz', sets: 3, reps: 15, ab: 4, hoch: 2, rest: 60, last: '', note: 'Gleiche Position. Mit der anderen Hand hochführen, dann allein langsam ablassen.' },
+  { id: 'e3', name: 'Unterarm drehen', typ: 'exz', sets: 3, reps: 12, ab: 3, hoch: 3, rest: 45, last: '', note: 'Hammer oder Hantel am Ende greifen, langsam nach außen und zurück drehen.' },
+  { id: 'e4', name: 'Greifen, halten', typ: 'iso', sets: 3, hold: 30, rest: 45, last: '', note: 'Ball oder Handtrainer mit gestrecktem Arm drücken und halten.' }];
+const DEFAULT_SETTINGS = { schema: 1, sound: true, vibrate: true, lastExport: null, seen: false };
+let saveOk = true;
+function load(k, fb) { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? fb : v; } catch (e) { return fb; } }
+function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { saveOk = false; } }
+const db = { settings: Object.assign({}, DEFAULT_SETTINGS, load(K.set, {})), exercises: load(K.ex, null), sessions: load(K.ses, []) };
+if (!db.exercises) { db.exercises = JSON.parse(JSON.stringify(SEED)); store(K.ex, db.exercises); }
+function saveAll() { store(K.set, db.settings); store(K.ex, db.exercises); store(K.ses, db.sessions); }
+function migrate() { if (!db.settings.schema) db.settings.schema = 1; }
+migrate();
+
+function dstr(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function today() { return dstr(new Date()); }
+function addDays(date, n) { const d = new Date(date + 'T12:00'); d.setDate(d.getDate() + n); return dstr(d); }
+function daysBetween(a, b) { return Math.round((new Date(b + 'T12:00') - new Date(a + 'T12:00')) / 86400000); }
+const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+function wdName(date) { return WD[new Date(date + 'T12:00').getDay()]; }
+function dShort(s) { return s.slice(8, 10) + '.' + s.slice(5, 7) + '.'; }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function clampInt(v, a, b, fb) { v = Math.round(+v); return isFinite(v) ? Math.max(a, Math.min(b, v)) : fb; }
+
+// ---------------------------------------------------------------- Reine Funktionen
+const TYP = { iso: 'Halten', exz: 'Langsames Ablassen', wdh: 'Wiederholungen' };
+const PREP = 3;
+function targetText(ex) {
+  return ex.typ === 'iso' ? ex.sets + ' × ' + ex.hold + ' s halten'
+    : ex.typ === 'exz' ? ex.sets + ' × ' + ex.reps + ' Wdh, ' + ex.ab + ' s ab / ' + ex.hoch + ' s zurück'
+    : ex.sets + ' × ' + ex.reps + ' Wdh';
+}
+// Ablauf einer Uebung als Liste von Phasen. kind: prep (Vorzaehlen), hold, down (ablassen),
+// up (zurueckfuehren), manual (selbst zaehlen, ohne Uhr), rest (Pause zwischen Saetzen).
+function plan(ex) {
+  const out = [];
+  for (let s = 1; s <= ex.sets; s++) {
+    if (ex.typ === 'wdh') out.push({ kind: 'manual', set: s, reps: ex.reps });
+    else {
+      out.push({ kind: 'prep', sec: PREP, set: s });
+      if (ex.typ === 'iso') out.push({ kind: 'hold', sec: ex.hold, set: s });
+      else for (let r = 1; r <= ex.reps; r++) { out.push({ kind: 'down', sec: ex.ab, set: s, rep: r }); out.push({ kind: 'up', sec: ex.hoch, set: s, rep: r }); }
+    }
+    if (s < ex.sets && ex.rest > 0) out.push({ kind: 'rest', sec: ex.rest, set: s });
+  }
+  return out;
+}
+function planSeconds(ex) { return plan(ex).reduce((a, p) => a + (p.kind === 'manual' ? p.reps * 3 : p.sec), 0); }
+function maxPain(s) { const v = s.items.map(i => i.pain).filter(x => x != null); return v.length ? Math.max.apply(null, v) : null; }
+// Faustregel nach dem Schmerz-Monitoring, wie es in der Sehnen-Reha ueblich ist:
+// leichter Schmerz bei der Uebung ist in Ordnung, solange er sich bis zum naechsten
+// Morgen wieder gelegt hat. Liefert {level, text}; level: start | ok | up | warn | stop.
+function advice(sessions) {
+  if (!sessions.length) return { level: 'start', text: 'Noch keine Einheit. Starte mit leichter Last und taste dich heran.' };
+  const s = sessions[sessions.length - 1], mx = maxPain(s), rise = s.morgen != null && s.pre != null ? s.morgen - s.pre : null;
+  if ((mx != null && mx >= 7) || (rise != null && rise >= 3))
+    return { level: 'stop', text: 'Das war zu viel: starker Schmerz bei der Übung oder deutlich mehr Schmerz am Morgen danach. Nächste Einheit auslassen oder Last und Umfang klar senken. Bleibt es so, bitte Arzt oder Physio fragen.' };
+  if ((mx != null && mx >= 5) || (rise != null && rise >= 2))
+    return { level: 'warn', text: 'An der Grenze: Schmerz von 5 oder mehr bei der Übung oder mehr Schmerz am Morgen danach. Beim nächsten Mal etwas weniger Last oder einen Satz weniger.' };
+  const last3 = sessions.slice(-3), known = last3.filter(x => x.morgen != null && x.pre != null);
+  if (last3.length === 3 && last3.every(x => { const m = maxPain(x); return m != null && m <= 3; }) && known.length >= 2 && known.every(x => x.morgen <= x.pre))
+    return { level: 'up', text: 'Drei Einheiten in Folge mit wenig Schmerz und ruhigem Morgen danach. Du kannst die Last um den kleinsten Schritt erhöhen, bei einer Übung nach der anderen.' };
+  return { level: 'ok', text: 'Im grünen Bereich. Bleib bei dieser Last, bis drei Einheiten in Folge leicht fallen.' };
+}
+// Einheit von gestern, zu der noch der Wert vom Morgen danach fehlt. Nur am Folgetag:
+// spaeter waere "heute Morgen" ein anderer Morgen und der Wert nichts mehr wert.
+function morningDue(sessions, day) {
+  for (let i = sessions.length - 1; i >= 0; i--) {
+    const s = sessions[i], d = daysBetween(s.date, day);
+    if (d <= 0) continue;
+    return d === 1 && s.morgen == null ? s : null;
+  }
+  return null;
+}
+function sessionsInLastDays(sessions, day, n) { return new Set(sessions.filter(s => { const d = daysBetween(s.date, day); return d >= 0 && d < n; }).map(s => s.date)).size; }
+// Text fuer den Health-OS-Chat: lesbare Zeilen, darunter die Werte als JSON.
+function rehaText(s) {
+  const min = Math.max(1, Math.round((s.endedAt - s.startedAt) / 60000)), mx = maxPain(s), n = v => v == null ? '–' : v;
+  const L = ['REHA ' + s.date + ' (' + wdName(s.date) + ') | ' + min + ' min | ' + s.items.length + ' Übungen' + (s.abgebrochen ? ' | abgebrochen' : '')];
+  L.push('Schmerz vorher ' + n(s.pre) + ' | bei den Übungen max ' + n(mx) + ' | danach ' + n(s.post));
+  s.items.forEach(i => L.push(i.name + ': ' + i.ziel + (i.setsDone < i.sets ? ' (' + i.setsDone + ' von ' + i.sets + ' Sätzen)' : '') + (i.last ? ' | Last ' + i.last : '') + ' | Schmerz ' + n(i.pain)));
+  if (s.note) L.push('Notiz: ' + String(s.note).replace(/\s*\n\s*/g, ' / '));
+  const j = { datum: s.date, reha_ok: true, reha_min: min };
+  if (mx != null) j.reha_schmerz_max = mx; if (s.pre != null) j.reha_schmerz_vor = s.pre; if (s.post != null) j.reha_schmerz_nach = s.post;
+  return L.join('\n') + '\n\nREHA-JSON-START\n' + JSON.stringify(j) + '\nREHA-JSON-ENDE';
+}
+// Wert vom Morgen danach: gehoert zum Folgetag und ist dort das Feld ellbogen_n.
+function morningText(s) {
+  return 'REHA ' + s.morgenDatum + ' (' + wdName(s.morgenDatum) + ') | Morgen-Check\nEllbogen am Morgen nach der Einheit vom ' + dShort(s.date) + ': ' + s.morgen + '/10 (vor der Einheit ' + (s.pre == null ? '–' : s.pre) + ')' +
+    '\n\nREHA-JSON-START\n' + JSON.stringify({ datum: s.morgenDatum, ellbogen_n: s.morgen }) + '\nREHA-JSON-ENDE';
+}
+
+// ---------------------------------------------------------------- Ton / Vibration
+let actx = null;
+function beep(freq, dur) {
+  if (!db.settings.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
+    o.frequency.value = freq; g.gain.setValueAtTime(0.14, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur);
+  } catch (e) {}
+}
+function buzz(p) { if (db.settings.vibrate && navigator.vibrate) { try { navigator.vibrate(p); } catch (e) {} } }
+
+// ---------------------------------------------------------------- Ablauf einer Einheit
+const RUN = { active: false, tick: 0, paused: false, ph: null, S: null, ei: 0, plan: [], pi: 0 };
+const body = html => { $('r-body').innerHTML = html; };
+const LABEL = { prep: 'Bereit machen', hold: 'Halten', down: 'Langsam ablassen', up: 'Zurückführen', rest: 'Pause' };
+function painChips(id) { return '<div class="chips" id="' + id + '">' + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => '<button class="chip num" data-n="' + n + '">' + n + '</button>').join('') + '</div>'; }
+function onPain(id, fn) { $(id).querySelectorAll('[data-n]').forEach(b => b.onclick = () => fn(+b.dataset.n)); }
+function startSession() {
+  if (!db.exercises.length) return;
+  RUN.active = true; RUN.paused = false; RUN.ph = null; RUN.ei = 0;
+  RUN.S = { id: Date.now(), date: today(), startedAt: Date.now(), endedAt: null, pre: null, post: null, items: [], note: '', morgen: null, morgenDatum: null };
+  $('run').hidden = false; resetQuit(); location.hash = 'run';
+  clearInterval(RUN.tick); RUN.tick = setInterval(tick, 100);
+  $('r-title').textContent = 'Vor dem Start'; $('r-step').textContent = '';
+  body('<p class="center">Wie stark spürst du den Ellbogen gerade?<br><span class="muted small">0 = nichts, 10 = stärkster vorstellbarer Schmerz</span></p>' + painChips('p-pre'));
+  onPain('p-pre', n => { RUN.S.pre = n; exerciseIntro(); });
+}
+function exerciseIntro() {
+  if (RUN.ei >= db.exercises.length) { askPost(); return; }
+  const ex = db.exercises[RUN.ei];
+  $('r-title').textContent = ex.name; $('r-step').textContent = 'Übung ' + (RUN.ei + 1) + ' von ' + db.exercises.length;
+  body('<div class="center"><div class="big">' + esc(targetText(ex)) + '</div>' + (ex.last ? '<div class="muted">Last: ' + esc(ex.last) + '</div>' : '') + '</div>' +
+    (ex.note ? '<p class="small muted">' + esc(ex.note) + '</p>' : '') +
+    '<button class="primary block" id="x-go">Los</button><button class="ghost block" id="x-skip">Übung auslassen</button>');
+  $('x-go').onclick = () => { beep(660, 0.05); RUN.item = { exId: ex.id, name: ex.name, typ: ex.typ, sets: ex.sets, setsDone: 0, ziel: targetText(ex), last: ex.last || '', pain: null }; RUN.plan = plan(ex); RUN.pi = 0; nextPhase(); };
+  $('x-skip').onclick = () => { RUN.ei++; exerciseIntro(); };
+}
+function nextPhase() {
+  const ex = db.exercises[RUN.ei], prev = RUN.plan[RUN.pi - 1], p = RUN.plan[RUN.pi];
+  // Ein Satz ist geschafft, sobald seine letzte Arbeitsphase vorbei ist.
+  if (prev && prev.kind !== 'rest' && prev.kind !== 'prep' && (!p || p.set !== prev.set || p.kind === 'rest')) RUN.item.setsDone = prev.set;
+  if (!p) { askPain(); return; }
+  RUN.pi++;
+  const info = 'Satz ' + p.set + ' von ' + ex.sets + (p.rep ? ' · Wiederholung ' + p.rep + ' von ' + ex.reps : '');
+  if (p.kind === 'manual') {
+    RUN.ph = null;
+    body('<div class="center"><div class="muted">' + info + '</div><div id="r-num" style="font-size:90px">' + p.reps + '</div><div id="r-label">Wiederholungen</div></div><button class="primary block" id="x-done">Satz fertig</button>');
+    $('x-done').onclick = () => { beep(880, 0.1); nextPhase(); };
+    return;
+  }
+  RUN.ph = { kind: p.kind, total: p.sec * 1000, left: p.sec * 1000, last: performance.now(), whole: null };
+  body('<div class="center"><div class="muted" id="r-info">' + info + '</div><div id="r-label" class="' + p.kind + '">' + LABEL[p.kind] + '</div><div id="r-num"></div></div>' +
+    '<div class="bar"><i id="r-bar"></i></div><div class="row"><button class="grow" id="x-pause">Pause</button><button class="grow" id="x-next">' + (p.kind === 'rest' ? 'Pause überspringen' : 'Weiter ›') + '</button></div>');
+  $('x-pause').onclick = () => { RUN.paused = !RUN.paused; $('x-pause').textContent = RUN.paused ? 'Fortsetzen' : 'Pause'; };
+  $('x-next').onclick = () => { RUN.ph = null; nextPhase(); };
+  RUN.paused = false;
+  if (p.kind === 'hold' || p.kind === 'down') { beep(880, 0.18); buzz(60); } else if (p.kind === 'up') beep(520, 0.1); else if (p.kind === 'rest') { beep(440, 0.25); buzz([80, 60, 80]); }
+  tick();
+}
+function tick() {
+  const ph = RUN.ph, now = performance.now(); if (!RUN.active || !ph) return;
+  if (RUN.paused) { ph.last = now; return; }
+  ph.left -= now - ph.last; ph.last = now;
+  const whole = Math.max(0, Math.ceil(ph.left / 1000));
+  if (whole !== ph.whole) {
+    ph.whole = whole; const el = $('r-num'); if (el) el.textContent = whole;
+    // letzte drei Sekunden anzaehlen (beim Ablassen und Zurueckfuehren nicht, das waere Dauerpiepen)
+    if (whole > 0 && whole <= 3 && (ph.kind === 'prep' || ph.kind === 'hold' || ph.kind === 'rest')) beep(440, 0.06);
+  }
+  const bar = $('r-bar'); if (bar) bar.style.width = Math.min(100, (1 - ph.left / ph.total) * 100) + '%';
+  if (ph.left <= 0) { RUN.ph = null; nextPhase(); }
+}
+function askPain() {
+  RUN.ph = null; beep(660, 0.3); buzz(150);
+  body('<p class="center">Übung geschafft.<br>Wie stark war der Schmerz dabei?</p>' + painChips('p-ex'));
+  onPain('p-ex', n => { RUN.item.pain = n; RUN.S.items.push(RUN.item); RUN.item = null; RUN.ei++; exerciseIntro(); });
+}
+function askPost() {
+  if (!RUN.S.items.length) { history.back(); return; }
+  $('r-title').textContent = 'Geschafft'; $('r-step').textContent = '';
+  body('<p class="center">Wie fühlt sich der Ellbogen jetzt an?</p>' + painChips('p-post') + '<label class="f">Notiz (optional)</label><textarea id="x-note" placeholder="z. B. Last geändert, etwas war anders"></textarea>');
+  onPain('p-post', n => { RUN.S.post = n; RUN.S.note = $('x-note').value.trim(); finish(false); });
+}
+function finish(aborted) {
+  const S = RUN.S; RUN.active = false; clearInterval(RUN.tick); RUN.ph = null; $('run').hidden = true;
+  if (RUN.item && RUN.item.setsDone > 0) { S.items.push(RUN.item); }
+  RUN.item = null; RUN.S = null;
+  if (!S || !S.items.length) return false;
+  S.endedAt = Date.now(); if (aborted) S.abgebrochen = true;
+  db.sessions.push(S); store(K.ses, db.sessions);
+  return true;
+}
+let quitArmed = 0;
+function resetQuit() { quitArmed = 0; $('r-quit').textContent = 'Abbrechen'; }
+$('r-quit').onclick = () => {
+  if (Date.now() - quitArmed < 3000) { history.back(); return; }
+  quitArmed = Date.now(); $('r-quit').textContent = 'Wirklich abbrechen?'; setTimeout(resetQuit, 3000);
+};
+
+// ---------------------------------------------------------------- Kopieren, Backup
+function copyText(text, done) {
+  if (NATIVE && NATIVE.copyText) { NATIVE.copyText(text); done(true); return; }
+  const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select(); let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) {}
+  ta.remove();
+  if (!ok && navigator.clipboard) { navigator.clipboard.writeText(text).then(() => done(true), () => done(false)); return; }
+  done(ok);
+}
+function copyBtn(btn, text) { copyText(text, ok => { btn.textContent = ok ? 'Kopiert ✓ Jetzt im Health-OS-Chat einfügen' : 'Kopieren fehlgeschlagen'; }); }
+function openModal(html, init) { $('modal-in').innerHTML = html; $('modal').hidden = false; init && init(); }
+function closeModal() { $('modal').hidden = true; }
+$('modal').onclick = e => { if (e.target === $('modal')) closeModal(); };
+function exportData() { return JSON.stringify({ app: 'rehacoach', version: 1, exported: new Date().toISOString(), settings: db.settings, exercises: db.exercises, sessions: db.sessions }); }
+function importText(text) {
+  let d; try { d = JSON.parse(text); } catch (e) { return 'Kein gültiger Export (kein JSON).'; }
+  if (!d || d.app !== 'rehacoach' || !Array.isArray(d.exercises) || !Array.isArray(d.sessions)) return 'Das ist kein Reha-Coach-Export.';
+  db.settings = Object.assign({}, DEFAULT_SETTINGS, d.settings || {}); db.exercises = d.exercises; db.sessions = d.sessions; migrate(); saveAll(); return null;
+}
+function exportDialog() {
+  const data = exportData(), name = 'rehacoach-backup-' + today() + '.json';
+  openModal('<h3>Backup</h3><div class="muted small">' + db.sessions.length + ' Einheiten, ' + db.exercises.length + ' Übungen</div><button class="block primary" id="b-file">Als Datei speichern</button>' +
+    '<div id="b-msg" class="small" style="margin-top:6px"></div><textarea class="mono" id="b-ta" readonly style="margin-top:8px"></textarea>' +
+    '<div class="btns"><button class="ghost" id="b-x">Schließen</button><button id="b-copy">Kopieren</button></div>', () => {
+    $('b-ta').value = data; $('b-x').onclick = closeModal;
+    $('b-file').onclick = () => {
+      if (NATIVE && NATIVE.saveFile) { window.rcFileSaved = ok => { const el = $('b-msg'); if (el) el.textContent = ok ? 'Gespeichert ✓' : 'Nicht gespeichert.'; }; NATIVE.saveFile(name, data); return; }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); $('b-msg').textContent = 'Download gestartet ✓';
+    };
+    $('b-copy').onclick = () => copyText(data, ok => { $('b-copy').textContent = ok ? 'Kopiert ✓' : 'Fehlgeschlagen'; });
+  });
+}
+function importDialog() {
+  openModal('<h3>Backup einspielen</h3><div class="small bad">Ersetzt alle Daten in der App.</div><button class="block" id="b-pick">Datei auswählen</button>' +
+    '<textarea class="mono" id="b-ta" placeholder="oder Text einfügen" style="margin-top:8px"></textarea><div id="b-msg" class="small bad"></div>' +
+    '<div class="btns"><button class="ghost" id="b-x">Abbrechen</button><button class="primary" id="b-ok">Einspielen</button></div>', () => {
+    const apply = text => { const err = importText(text); if (err) { $('b-msg').textContent = err; return; } closeModal(); render('settings'); };
+    $('b-x').onclick = closeModal; $('b-ok').onclick = () => apply($('b-ta').value);
+    $('b-pick').onclick = () => {
+      if (NATIVE && NATIVE.openFile) { window.rcFileReady = () => apply(NATIVE.takePickedFile()); NATIVE.openFile(); return; }
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json';
+      inp.onchange = () => { const f = inp.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => apply(String(r.result)); r.readAsText(f); };
+      inp.click();
+    };
+  });
+}
+
+// ---------------------------------------------------------------- Uebungen bearbeiten
+function exerciseDialog(i) {
+  const neu = i < 0, ex = neu ? { id: 'e' + Date.now().toString(36), name: '', typ: 'iso', sets: 3, hold: 30, reps: 12, ab: 4, hoch: 2, rest: 60, last: '', note: '' } : Object.assign({ hold: 30, reps: 12, ab: 4, hoch: 2 }, db.exercises[i]);
+  const draw = () => openModal('<h3>' + (neu ? 'Neue Übung' : 'Übung ändern') + '</h3><label class="f" style="margin-top:0">Name</label><input type="text" id="e-name" value="' + esc(ex.name) + '">' +
+    '<label class="f">Art</label><div class="chips">' + Object.keys(TYP).map(t => '<button class="chip' + (ex.typ === t ? ' on' : '') + '" data-typ="' + t + '">' + TYP[t] + '</button>').join('') + '</div>' +
+    '<div class="row"><div class="grow"><label class="f">Sätze</label><input type="number" id="e-sets" inputmode="numeric" value="' + ex.sets + '"></div>' +
+    (ex.typ === 'iso' ? '<div class="grow"><label class="f">Halten (s)</label><input type="number" id="e-hold" inputmode="numeric" value="' + ex.hold + '"></div>'
+      : '<div class="grow"><label class="f">Wiederholungen</label><input type="number" id="e-reps" inputmode="numeric" value="' + ex.reps + '"></div>') +
+    '<div class="grow"><label class="f">Pause (s)</label><input type="number" id="e-rest" inputmode="numeric" value="' + ex.rest + '"></div></div>' +
+    (ex.typ === 'exz' ? '<div class="row"><div class="grow"><label class="f">Ablassen (s)</label><input type="number" id="e-ab" inputmode="numeric" value="' + ex.ab + '"></div><div class="grow"><label class="f">Zurückführen (s)</label><input type="number" id="e-hoch" inputmode="numeric" value="' + ex.hoch + '"></div></div>' : '') +
+    '<label class="f">Last (frei, z. B. „3 kg“ oder „rotes Band“)</label><input type="text" id="e-last" value="' + esc(ex.last || '') + '">' +
+    '<label class="f">Hinweis zur Ausführung</label><textarea id="e-note">' + esc(ex.note || '') + '</textarea><div id="e-msg" class="small bad"></div>' +
+    '<div class="btns">' + (neu ? '' : '<button class="ghost bad" id="e-del">Löschen</button>') + '<button class="ghost" id="e-x">Abbrechen</button><button class="primary" id="e-ok">Speichern</button></div>', () => {
+    const read = () => { ex.name = $('e-name').value.trim(); ex.sets = clampInt($('e-sets').value, 1, 10, 3); ex.rest = clampInt($('e-rest').value, 0, 600, 60);
+      if ($('e-hold')) ex.hold = clampInt($('e-hold').value, 3, 600, 30); if ($('e-reps')) ex.reps = clampInt($('e-reps').value, 1, 100, 12);
+      if ($('e-ab')) { ex.ab = clampInt($('e-ab').value, 1, 30, 4); ex.hoch = clampInt($('e-hoch').value, 1, 30, 2); }
+      ex.last = $('e-last').value.trim(); ex.note = $('e-note').value.trim(); };
+    $('modal-in').querySelectorAll('[data-typ]').forEach(b => b.onclick = () => { read(); ex.typ = b.dataset.typ; draw(); });
+    $('e-x').onclick = closeModal;
+    if (!neu) $('e-del').onclick = () => { db.exercises.splice(i, 1); store(K.ex, db.exercises); closeModal(); render('exercises'); };
+    $('e-ok').onclick = () => { read(); if (!ex.name) { $('e-msg').textContent = 'Bitte einen Namen angeben.'; return; }
+      if (neu) db.exercises.push(ex); else db.exercises[i] = ex; store(K.ex, db.exercises); closeModal(); render('exercises'); };
+  });
+  draw();
+}
+
+// ---------------------------------------------------------------- Diagramm
+// series: [{color, pts: [{x, y}]}], y fest 0..10
+function drawChart(cv, series) {
+  const k = window.devicePixelRatio || 1, W = cv.clientWidth || 300, H = cv.clientHeight || 150, c = cv.getContext('2d');
+  cv.width = W * k; cv.height = H * k; c.scale(k, k); c.clearRect(0, 0, W, H);
+  const all = series.reduce((a, s) => a.concat(s.pts), []); c.font = '11px system-ui, sans-serif'; c.fillStyle = '#93A0AF';
+  if (!all.length) { c.textAlign = 'center'; c.fillText('Noch keine Daten', W / 2, H / 2); return; }
+  let x0 = Math.min.apply(null, all.map(p => p.x)), x1 = Math.max.apply(null, all.map(p => p.x)); if (x0 === x1) { x0 -= 43200000; x1 += 43200000; }
+  const L = 26, R = 10, T = 8, B = 18, X = x => L + (x - x0) / (x1 - x0) * (W - L - R), Y = y => T + (10 - y) / 10 * (H - T - B);
+  c.strokeStyle = '#2A3441'; c.lineWidth = 1; c.textAlign = 'right'; c.textBaseline = 'middle';
+  [0, 5, 10].forEach(v => { c.beginPath(); c.moveTo(L, Y(v)); c.lineTo(W - R, Y(v)); c.stroke(); c.fillText(v, L - 6, Y(v)); });
+  c.textBaseline = 'alphabetic'; c.textAlign = 'left'; c.fillText(dShort(dstr(new Date(x0))), L, H - 3); c.textAlign = 'right'; c.fillText(dShort(dstr(new Date(x1))), W - R, H - 3);
+  series.forEach(s => { if (!s.pts.length) return; c.strokeStyle = c.fillStyle = s.color; c.lineWidth = 2; c.beginPath();
+    s.pts.forEach((p, i) => { if (i) c.lineTo(X(p.x), Y(p.y)); else c.moveTo(X(p.x), Y(p.y)); }); c.stroke();
+    s.pts.forEach(p => { c.beginPath(); c.arc(X(p.x), Y(p.y), 3, 0, 2 * Math.PI); c.fill(); }); });
+}
+
+// ---------------------------------------------------------------- Ansichten
+const view = $('view'), VIEWS = {};
+const TITLES = { home: 'Reha-Coach', exercises: 'Übungen', done: 'Einheit fertig', history: 'Verlauf', settings: 'Einstellungen', info: 'Hinweise' };
+function sessionHtml(s) {
+  return '<div class="muted small">Schmerz vorher ' + (s.pre == null ? '–' : s.pre) + ' · danach ' + (s.post == null ? '–' : s.post) + (s.morgen != null ? ' · Morgen danach ' + s.morgen : '') + '</div>' +
+    s.items.map(i => '<div class="item"><div class="grow">' + esc(i.name) + '<div class="muted small">' + esc(i.ziel) + (i.setsDone < i.sets ? ' · ' + i.setsDone + ' von ' + i.sets + ' Sätzen' : '') + (i.last ? ' · ' + esc(i.last) : '') + '</div></div><b>Schmerz ' + (i.pain == null ? '–' : i.pain) + '</b></div>').join('');
+}
+VIEWS.home = () => {
+  const due = morningDue(db.sessions, today()), a = advice(db.sessions), n7 = sessionsInLastDays(db.sessions, today(), 7);
+  const secs = db.exercises.reduce((t, e) => t + planSeconds(e), 0), last = db.sessions[db.sessions.length - 1];
+  let h = '';
+  if (!saveOk) h += '<div class="card small bad">Speichern ist fehlgeschlagen. Bitte in den Einstellungen ein Backup kopieren.</div>';
+  if (window.RC_TEST) h += '<div class="card small" id="selftest">Selbsttest: ' + RC_TEST.ok + ' OK, ' + RC_TEST.fail + ' Fehler</div>';
+  if (!db.settings.seen) h += '<div class="card warn"><h2>Vor dem ersten Mal</h2><div class="small">Die vier Übungen sind übliche Vorschläge bei Tennisarm, kein Plan für dich. Ersetze sie unter „Übungen“ durch die aus deinem eigenen Plan und trage deine Last ein.</div><button class="block" id="h-seen">Verstanden</button></div>';
+  if (due) h += '<div class="card"><h2>Morgen danach</h2><div class="small">Wie war der Ellbogen heute Morgen, nach der Einheit vom ' + dShort(due.date) + '?</div><div style="margin-top:8px">' + painChips('p-morgen') + '</div></div>';
+  h += '<div class="card"><h2>Heute</h2><div class="muted small">' + db.exercises.length + ' Übungen · etwa ' + Math.max(1, Math.round(secs / 60)) + ' min</div>' +
+    '<button class="block primary" id="h-start"' + (db.exercises.length ? '' : ' disabled') + '>' + (last && last.date === today() ? 'Noch eine Einheit' : 'Einheit starten') + '</button></div>';
+  h += '<div class="card ' + ({ stop: 'stop', warn: 'warn', up: 'up' }[a.level] || '') + '"><h2>Einschätzung</h2><div class="small">' + a.text + '</div></div>';
+  h += '<div class="card"><div class="row"><div class="grow"><div class="big">' + n7 + '</div><div class="muted small">Tage mit Einheit in 7 Tagen</div></div><div class="grow"><div class="big">' + db.sessions.length + '</div><div class="muted small">Einheiten gesamt</div></div></div></div>';
+  if (last) h += '<div class="card"><h2>Letzte Einheit · ' + dShort(last.date) + '</h2>' + sessionHtml(last) + '<button class="block" id="h-copy">Für Health-OS kopieren</button>' +
+    (last.morgen != null ? '<button class="block" id="h-copym">Morgen-Wert kopieren</button>' : '') + '</div>';
+  h += '<div class="row"><button class="grow" id="h-ex">Übungen</button><button class="grow" id="h-hist">Verlauf</button><button class="grow" id="h-set">Mehr</button></div>';
+  view.innerHTML = h;
+  const on = (id, fn) => { const e = $(id); if (e) e.onclick = fn; };
+  on('h-seen', () => { db.settings.seen = true; store(K.set, db.settings); render('home'); });
+  on('h-start', startSession); on('h-ex', () => go('exercises')); on('h-hist', () => go('history')); on('h-set', () => go('settings'));
+  on('h-copy', () => copyBtn($('h-copy'), rehaText(last))); on('h-copym', () => copyBtn($('h-copym'), morningText(last)));
+  if (due) onPain('p-morgen', n => { due.morgen = n; due.morgenDatum = today(); store(K.ses, db.sessions); render('home'); });
+};
+VIEWS.exercises = () => {
+  view.innerHTML = '<div class="card"><h2>Reihenfolge der Einheit</h2>' + (db.exercises.length ? db.exercises.map((e, i) =>
+    '<div class="item"><div class="grow" data-edit="' + i + '">' + esc(e.name) + '<div class="muted small">' + esc(targetText(e)) + (e.last ? ' · ' + esc(e.last) : '') + '</div></div>' +
+    '<button class="ghost small" data-up="' + i + '"' + (i ? '' : ' disabled') + '>▲</button><button class="ghost small" data-down="' + i + '"' + (i < db.exercises.length - 1 ? '' : ' disabled') + '>▼</button></div>').join('')
+    : '<div class="muted small">Noch keine Übung.</div>') + '<button class="block primary" id="x-add">+ Übung</button></div>' +
+    '<div class="muted small">Tippe auf eine Übung, um sie zu ändern. Die Last trägst du frei ein; die App rechnet nicht damit.</div>';
+  view.querySelectorAll('[data-edit]').forEach(el => el.onclick = () => exerciseDialog(+el.dataset.edit));
+  const move = (i, d) => { const a = db.exercises, t = a[i]; a[i] = a[i + d]; a[i + d] = t; store(K.ex, a); render('exercises'); };
+  view.querySelectorAll('[data-up]').forEach(b => b.onclick = () => move(+b.dataset.up, -1));
+  view.querySelectorAll('[data-down]').forEach(b => b.onclick = () => move(+b.dataset.down, 1));
+  $('x-add').onclick = () => exerciseDialog(-1);
+};
+VIEWS.done = () => {
+  const s = db.sessions[db.sessions.length - 1]; if (!s) { render('home'); return; }
+  const a = advice(db.sessions);
+  view.innerHTML = '<div class="card"><h2>' + dShort(s.date) + ' · ' + Math.max(1, Math.round((s.endedAt - s.startedAt) / 60000)) + ' min</h2>' + sessionHtml(s) + '</div>' +
+    '<div class="card ' + ({ stop: 'stop', warn: 'warn', up: 'up' }[a.level] || '') + '"><div class="small">' + a.text + '</div></div>' +
+    '<div class="muted small">Morgen früh fragt die App, wie sich der Ellbogen anfühlt. Dieser Wert zählt am meisten.</div>' +
+    '<button class="block primary" id="d-copy">Für Health-OS kopieren</button><button class="block" id="d-home">Fertig</button>';
+  $('d-copy').onclick = () => copyBtn($('d-copy'), rehaText(s)); $('d-home').onclick = () => history.back();
+};
+VIEWS.history = () => {
+  const ser = (f, color) => ({ color, pts: db.sessions.map(s => ({ x: s.startedAt, y: f(s) })).filter(p => p.y != null) });
+  view.innerHTML = '<div class="card"><h2>Schmerz (0–10)</h2><canvas class="chart" id="ch"></canvas><div class="legend">' +
+    '<span><i style="background:#93A0AF"></i>vorher</span><span><i style="background:#E0A93B"></i>bei den Übungen (max)</span><span><i style="background:#3FB6A8"></i>Morgen danach</span></div></div>' +
+    '<div class="card"><h2>Einheiten</h2>' + (db.sessions.length ? db.sessions.slice(-30).reverse().map(s =>
+      '<div class="item"><div class="grow">' + wdName(s.date) + ' ' + dShort(s.date) + (s.abgebrochen ? ' · abgebrochen' : '') + '<div class="muted small">' + s.items.length + ' Übungen · vorher ' + (s.pre == null ? '–' : s.pre) +
+      ' · max ' + (maxPain(s) == null ? '–' : maxPain(s)) + ' · Morgen ' + (s.morgen == null ? '–' : s.morgen) + '</div></div><button class="ghost small" data-c="' + s.id + '">Kopieren</button></div>').join('')
+      : '<div class="muted small">Noch keine Einheit.</div>') + '</div>';
+  drawChart($('ch'), [ser(s => s.pre, '#93A0AF'), ser(maxPain, '#E0A93B'), ser(s => s.morgen, '#3FB6A8')]);
+  view.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { const s = db.sessions.find(x => String(x.id) === b.dataset.c); if (s) copyText(rehaText(s), ok => { b.textContent = ok ? 'Kopiert ✓' : 'Fehler'; }); });
+};
+VIEWS.settings = () => {
+  const s = db.settings;
+  view.innerHTML = '<div class="card"><h2>Signale</h2><label class="c"><input type="checkbox" id="s-snd"' + (s.sound ? ' checked' : '') + '> Töne</label>' +
+    '<label class="c"><input type="checkbox" id="s-vib"' + (s.vibrate ? ' checked' : '') + '> Vibration</label></div>' +
+    '<div class="card"><h2>Daten</h2><div class="row"><button class="grow" id="s-exp">Backup</button><button class="grow" id="s-imp">Einspielen</button></div></div>' +
+    '<button class="block" id="s-info">Hinweise zur Schmerz-Regel</button><div class="muted small" style="margin-top:10px">Reha-Coach v1.0 · kein Medizinprodukt</div>';
+  $('s-snd').onchange = e => { s.sound = e.target.checked; store(K.set, s); }; $('s-vib').onchange = e => { s.vibrate = e.target.checked; store(K.set, s); };
+  $('s-exp').onclick = exportDialog; $('s-imp').onclick = importDialog; $('s-info').onclick = () => go('info');
+};
+VIEWS.info = () => {
+  view.innerHTML = '<div class="card"><h2>Die Schmerz-Regel der App</h2><ul class="small">' +
+    '<li><b>Bei der Übung:</b> bis etwa 3 ist unbedenklich, 5 und mehr ist die Grenze, ab 7 abbrechen.</li>' +
+    '<li><b>Am Morgen danach:</b> Der Ellbogen soll sich nicht schlechter anfühlen als vor der Einheit. Zwei Punkte mehr heißt weniger Last, drei Punkte mehr heißt aussetzen.</li>' +
+    '<li><b>Steigern:</b> erst nach drei leichten Einheiten in Folge, in kleinen Schritten, eine Übung nach der anderen.</li></ul>' +
+    '<div class="small muted">Das ist eine Faustregel, wie sie in der Sehnen-Reha üblich ist. Die genauen Zahlen sind Erfahrungswerte, keine für dich geprüften Grenzen. Dein Arzt oder Physio kann andere vorgeben, und die gehen dann vor.</div></div>' +
+    '<div class="card"><h2>Wann zum Arzt oder Physio</h2><ul class="small"><li>Schmerz in Ruhe oder nachts, der dich weckt.</li><li>Taubheit, Kribbeln oder Kraftverlust in Hand oder Fingern.</li><li>Schwellung, Rötung oder Überwärmung am Gelenk.</li><li>Keine Besserung nach einigen Wochen trotz regelmäßigem Üben.</li></ul></div>' +
+    '<div class="card"><h2>Was die App nicht ist</h2><div class="small">Sie stellt keine Diagnose und kennt deinen Befund nicht. Die mitgelieferten Übungen sind allgemeine Vorschläge. Die App führt durch den Plan, den du einträgst, und hält fest, wie dein Ellbogen darauf reagiert.</div></div>';
+};
+function render(name) {
+  if (!VIEWS[name]) name = 'home';
+  $('title').textContent = TITLES[name]; $('back').style.visibility = name === 'home' ? 'hidden' : 'visible';
+  VIEWS[name](); window.scrollTo(0, 0);
+}
+function go(name) { location.hash = name; }
+function route() {
+  const h = (location.hash || '#home').slice(1);
+  if (RUN.active && h !== 'run') finish(true);
+  if (h === 'run') { if (!RUN.active) { history.replaceState(null, '', '#home'); render('home'); } return; }
+  render(h);
+}
+// Regulaeres Ende: Einheit sichern und statt der Mess-Ansicht das Ergebnis zeigen.
+const finishOrig = finish;
+finish = function (aborted) { const saved = finishOrig(aborted); if (!aborted) location.replace(saved ? '#done' : '#home'); return saved; };
+$('back').onclick = () => history.back();
+window.addEventListener('hashchange', route);
+
+// ---------------------------------------------------------------- Selbsttest
+function rcTests() {
+  let ok = 0, fail = 0;
+  const t = (name, cond, info) => { if (cond) { ok++; console.log('OK   ' + name); } else { fail++; console.error('FAIL ' + name + (info !== undefined ? ' -> ' + info : '')); } };
+  const iso = { typ: 'iso', sets: 3, hold: 30, rest: 45 }, exz = { typ: 'exz', sets: 2, reps: 3, ab: 4, hoch: 2, rest: 60 }, wdh = { typ: 'wdh', sets: 2, reps: 10, rest: 30 };
+  t('targetText', targetText(iso) === '3 × 30 s halten' && targetText(exz) === '2 × 3 Wdh, 4 s ab / 2 s zurück' && targetText(wdh) === '2 × 10 Wdh');
+  const kinds = e => plan(e).map(p => p.kind).join(',');
+  t('plan Halten: Vorzaehlen, Halten, Pause, keine Pause am Ende', kinds(iso) === 'prep,hold,rest,prep,hold,rest,prep,hold');
+  t('plan Ablassen: je Wiederholung ab und zurueck', kinds(exz) === 'prep,down,up,down,up,down,up,rest,prep,down,up,down,up,down,up');
+  t('plan Wiederholungen: ohne Uhr', kinds(wdh) === 'manual,rest,manual');
+  t('plan ohne Pause', plan({ typ: 'iso', sets: 2, hold: 10, rest: 0 }).every(p => p.kind !== 'rest'));
+  t('planSeconds', planSeconds(iso) === 3 * 3 + 3 * 30 + 2 * 45 && planSeconds(exz) === 2 * 3 + 2 * 3 * 6 + 60 && planSeconds(wdh) === 2 * 30 + 30);
+  const lastP = plan(exz); t('plan: Satz und Wiederholung mitgefuehrt', lastP[lastP.length - 1].set === 2 && lastP[lastP.length - 1].rep === 3);
+  const S = (pre, pains, morgen, date) => ({ date: date || '2026-11-10', startedAt: 0, endedAt: 840000, pre, post: pre, items: pains.map((p, i) => ({ name: 'Ü' + i, sets: 3, setsDone: 3, ziel: '3 × 30 s halten', last: '3 kg', pain: p })), morgen: morgen === undefined ? null : morgen });
+  t('maxPain', maxPain(S(1, [2, 4, 3])) === 4 && maxPain(S(1, [])) === null);
+  t('Hinweis: noch keine Einheit', advice([]).level === 'start');
+  t('Hinweis: starker Schmerz -> stop', advice([S(1, [7])]).level === 'stop' && advice([S(1, [2], 4)]).level === 'stop');
+  t('Hinweis: Grenze -> warn', advice([S(1, [5])]).level === 'warn' && advice([S(2, [3], 4)]).level === 'warn');
+  t('Hinweis: gruen', advice([S(2, [3], 2)]).level === 'ok' && advice([S(2, [4], 3)]).level === 'ok');
+  t('Hinweis: drei leichte Einheiten -> steigern', advice([S(2, [2], 1), S(2, [3], 2), S(1, [1], 1)]).level === 'up');
+  t('Hinweis: steigern nur mit ruhigem Morgen', advice([S(2, [2], 3), S(2, [3], 2), S(1, [1], 1)]).level === 'ok');
+  t('Hinweis: steigern braucht zwei bekannte Morgenwerte', advice([S(2, [2]), S(2, [3]), S(1, [1], 1)]).level === 'ok');
+  t('Hinweis: eine fruehere schwere Einheit verhindert das Steigern', advice([S(2, [4], 2), S(2, [3], 2), S(1, [1], 1)]).level === 'ok');
+  const ses = [S(1, [2], null, '2026-11-12'), S(1, [2], null, '2026-11-14')];
+  t('Morgen danach: am Folgetag faellig', morningDue(ses, '2026-11-15') === ses[1] && morningDue(ses, '2026-11-13') === ses[0]);
+  t('Morgen danach: nicht am selben Tag, nicht spaeter, nicht doppelt', morningDue(ses, '2026-11-14') === null && morningDue(ses, '2026-11-16') === null && morningDue([S(1, [2], 1, '2026-11-14')], '2026-11-15') === null);
+  t('Einheiten in 7 Tagen zaehlt Tage', sessionsInLastDays(ses.concat([S(1, [1], null, '2026-11-14')]), '2026-11-15', 7) === 2 && sessionsInLastDays(ses, '2026-11-20', 7) === 1);
+  const txt = rehaText(Object.assign(S(2, [3, 1], 1, '2026-11-14'), { note: 'a\nb' }));
+  t('Text: Kopf und Schmerzzeile', txt.startsWith('REHA 2026-11-14 (Sa) | 14 min | 2 Übungen\nSchmerz vorher 2 | bei den Übungen max 3 | danach 2'), txt);
+  t('Text: Übungszeile und Notiz', txt.includes('Ü0: 3 × 30 s halten | Last 3 kg | Schmerz 3') && txt.includes('Notiz: a / b'));
+  let j = null; try { j = JSON.parse(txt.split('REHA-JSON-START\n')[1].split('\nREHA-JSON-ENDE')[0]); } catch (x) {}
+  t('Text: JSON', j && j.datum === '2026-11-14' && j.reha_ok === true && j.reha_min === 14 && j.reha_schmerz_max === 3 && j.reha_schmerz_vor === 2 && !('ellbogen_n' in j));
+  const part = S(2, [3], null, '2026-11-14'); part.items[0].setsDone = 1; t('Text: unvollstaendige Uebung', rehaText(part).includes('(1 von 3 Sätzen)'));
+  const mt = morningText(Object.assign(S(2, [3], 1, '2026-11-14'), { morgenDatum: '2026-11-15' }));
+  let mj = null; try { mj = JSON.parse(mt.split('REHA-JSON-START\n')[1].split('\nREHA-JSON-ENDE')[0]); } catch (x) {}
+  t('Morgen-Text: gehoert zum Folgetag als ellbogen_n', mt.startsWith('REHA 2026-11-15 (So) | Morgen-Check') && mj && mj.datum === '2026-11-15' && mj.ellbogen_n === 1);
+  t('clampInt', clampInt('7', 1, 10, 3) === 7 && clampInt('x', 1, 10, 3) === 3 && clampInt(99, 1, 10, 3) === 10);
+  t('Import lehnt Fremddaten ab', importText('{"app":"healthlog"}') !== null && importText('x') !== null);
+  console.log('Selbsttest: ' + ok + ' OK, ' + fail + ' Fehler');
+  return { ok, fail };
+}
+window.rcTests = rcTests;
+if (/[?&]debug=1/.test(location.search)) window.RC_TEST = rcTests();
+route();
+</script>
+</body>
+</html>
